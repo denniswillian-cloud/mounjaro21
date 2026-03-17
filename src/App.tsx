@@ -11,19 +11,26 @@ import CommunityPage from './pages/CommunityPage';
 import AdminPage from './pages/AdminPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#060E08', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 40, height: 40, border: '3px solid rgba(61,255,122,0.3)', borderTopColor: '#3DFF7A', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  );
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 function AppLayout() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   return (
     <div style={{ minHeight: '100vh', background: '#F8F6F2' }}>
       {user && <Header />}
       {user && <BottomNav />}
       <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/login" element={
+          loading ? null : user ? <Navigate to="/" replace /> : <LoginPage />
+        } />
         <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
         <Route path="/chapters" element={<ProtectedRoute><ChaptersPage /></ProtectedRoute>} />
         <Route path="/chapter/:id" element={<ProtectedRoute><ChapterPage /></ProtectedRoute>} />

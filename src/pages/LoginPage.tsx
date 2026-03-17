@@ -49,9 +49,15 @@ export default function LoginPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email, password)) {
+    setSubmitting(true);
+    setError('');
+    const ok = await login(email, password);
+    setSubmitting(false);
+    if (ok) {
       navigate('/');
     } else {
       setError(t(lang, 'loginError'));
@@ -170,10 +176,11 @@ export default function LoginPage() {
 
             <button
               type="submit"
+              disabled={submitting}
               className="btn-gold w-full py-4 rounded-xl font-bold transition-all active:scale-95 mt-2"
-              style={{ fontSize: '16px' }}
+              style={{ fontSize: '16px', opacity: submitting ? 0.7 : 1 }}
             >
-              {t(lang, 'login')}
+              {submitting ? '...' : t(lang, 'login')}
             </button>
           </form>
 

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Language } from './translations';
 import type { Category, Chapter, Comment, UserProgress } from './data';
 import { defaultCategories, defaultChapters, defaultComments } from './data';
+import { supabase } from './supabase';
 
 // ─── Language Context ──────────────────────────────────────────────────────────
 interface LangCtx { lang: Language; setLang: (l: Language) => void; }
@@ -17,32 +18,62 @@ export function LangProvider({ children }: { children: ReactNode }) {
 export const useLang = () => useContext(LangContext);
 
 // ─── Auth Context ──────────────────────────────────────────────────────────────
-interface User { email: string; isAdmin: boolean; name: string; }
-interface AuthCtx { user: User | null; login: (e: string, p: string) => boolean; logout: () => void; }
-const AuthContext = createContext<AuthCtx>({ user: null, login: () => false, logout: () => {} });
+const ADMIN_EMAILS = ['admin@transforma21.com'];
 
-const USERS = [
-  { email: 'admin@transforma21.com', password: 'admin123', isAdmin: true, name: 'Administrador' },
-  { email: 'demo@transforma21.com', password: 'demo123', isAdmin: false, name: 'Usuario Demo' },
-];
+interface User { id: string; email: string; isAdmin: boolean; name: string; }
+interface AuthCtx {
+  user: User | null;
+  loading: boolean;
+  login: (e: string, p: string) => Promise<boolean>;
+  logout: () => void;
+}
+const AuthContext = createContext<AuthCtx>({
+  user: null,
+  loading: true,
+  login: async () => false,
+  logout: () => {},
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const s = localStorage.getItem('t21_user');
-    return s ? JSON.parse(s) : null;
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const buildUser = (sbUser: { id: string; email?: string; user_metadata?: Record<string, string> }): User => ({
+    id: sbUser.id,
+    email: sbUser.email || '',
+    isAdmin: ADMIN_EMAILS.includes(sbUser.email || ''),
+    name: sbUser.user_metadata?.name || (sbUser.email || '').split('@')[0],
   });
-  const login = (email: string, password: string) => {
-    const found = USERS.find(u => u.email === email && u.password === password);
-    if (found) {
-      const u = { email: found.email, isAdmin: found.isAdmin, name: found.name };
-      setUser(u);
-      localStorage.setItem('t21_user', JSON.stringify(u));
-      return true;
-    }
-    return false;
+
+  useEffect(() => {
+    // Sessão inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ? buildUser(session.user) : null);
+      setLoading(false);
+    });
+    // Ouvir mudanças de auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ? buildUser(session.user) : null);
+      setLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return !error;
   };
-  const logout = () => { setUser(null); localStorage.removeItem('t21_user'); };
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 export const useAuth = () => useContext(AuthContext);
 
