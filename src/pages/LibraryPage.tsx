@@ -1,7 +1,36 @@
 import React from 'react';
-import { Download, FileText, ArrowDown } from 'lucide-react';
+import { Download, FileText, ArrowDown, ExternalLink } from 'lucide-react';
 import { useLang, useContent } from '../contexts';
 import { t } from '../translations';
+
+// Converte links do Google Drive / Dropbox para download/visualização direto
+function getDirectPdfUrl(url: string): string {
+  if (!url) return url;
+
+  // Google Drive: https://drive.google.com/file/d/FILE_ID/view...
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/);
+  if (driveMatch) {
+    return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+  }
+
+  // Google Drive: https://drive.google.com/open?id=FILE_ID
+  const driveOpen = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (driveOpen) {
+    return `https://drive.google.com/uc?export=download&id=${driveOpen[1]}`;
+  }
+
+  // Dropbox: troca dl=0 por dl=1 e usa link direto
+  if (url.includes('dropbox.com')) {
+    return url.replace('?dl=0', '?dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+  }
+
+  return url;
+}
+
+function openPdf(rawUrl: string) {
+  const url = getDirectPdfUrl(rawUrl);
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
 
 export default function LibraryPage() {
   const { lang } = useLang();
@@ -76,20 +105,20 @@ export default function LibraryPage() {
                       {item.summary}
                     </p>
 
-                    <a
-                      href={item.pdfUrl}
-                      download
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold no-underline transition-all active:scale-95"
+                    <button
+                      onClick={() => openPdf(item.pdfUrl!)}
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold w-full transition-all active:scale-95"
                       style={{
                         background: `${neon}15`,
                         color: neon,
                         border: `1px solid ${neon}30`,
                         boxShadow: `0 0 12px ${neon}15`,
+                        cursor: 'pointer',
                       }}
                     >
                       <ArrowDown size={16} />
                       {t(lang, 'download')}
-                    </a>
+                    </button>
                   </div>
                 </div>
               );

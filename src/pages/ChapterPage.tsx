@@ -269,10 +269,19 @@ function RecipeLayout({ chapter }: { chapter: any }) {
 
         {/* PDF download */}
         {chapter.pdfUrl && (
-          <a
-            href={chapter.pdfUrl}
-            className="flex items-center gap-3 rounded-2xl p-4 no-underline transition-all card-hover"
-            style={{ background: '#0C1A0E', border: '1px solid rgba(61,255,122,0.12)' }}
+          <button
+            onClick={() => {
+              const url = chapter.pdfUrl!;
+              const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/);
+              const driveOpen = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+              let finalUrl = url;
+              if (driveMatch) finalUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+              else if (driveOpen) finalUrl = `https://drive.google.com/uc?export=download&id=${driveOpen[1]}`;
+              else if (url.includes('dropbox.com')) finalUrl = url.replace('?dl=0','?dl=1').replace('www.dropbox.com','dl.dropboxusercontent.com');
+              window.open(finalUrl, '_blank', 'noopener,noreferrer');
+            }}
+            className="flex items-center gap-3 rounded-2xl p-4 w-full transition-all card-hover"
+            style={{ background: '#0C1A0E', border: '1px solid rgba(61,255,122,0.12)', cursor: 'pointer', textAlign: 'left' }}
           >
             <div className="w-10 h-10 rounded-xl flex items-center justify-center"
               style={{ background: 'rgba(61,255,122,0.1)' }}>
@@ -283,7 +292,7 @@ function RecipeLayout({ chapter }: { chapter: any }) {
               <p className="text-xs" style={{ color: '#5E8C6A' }}>{chapter.title}.pdf</p>
             </div>
             <ChevronRight size={16} color="#3E6348" />
-          </a>
+          </button>
         )}
 
         {/* Action buttons */}
