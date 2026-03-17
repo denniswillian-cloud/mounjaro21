@@ -24,38 +24,83 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body;
   const event = body?.event;
 
-  // Only process purchase approved/complete events
-  if (event !== 'PURCHASE_APPROVED' && event !== 'PURCHASE_COMPLETE') {
-    return res.status(200).json({ message: `Event ${event} ignored` });
-  }
-
-  const buyer = body?.data?.buyer;
-  if (!buyer?.email) {
-    return res.status(400).json({ error: 'Missing buyer email' });
-  }
-
-  const email: string = buyer.email;
-  const name: string = buyer.name || email.split('@')[0];
-
-  try {
-    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { name },
-      redirectTo: APP_URL,
-    });
-
-    if (error) {
-      // If user already exists, that's fine — don't fail
-      if (error.message?.includes('already been registered') || error.message?.includes('already exists')) {
-        return res.status(200).json({ message: 'User already exists', email });
-      }
-      console.error('Supabase invite error:', error);
-      return res.status(500).json({ error: error.message });
+  // --- PURCHASE APPROVED: create user ---
+  if (event === 'PURCHASE_APPROVED' || event === 'PURCHASE_COMPLETE') {
+    const buyer = body?.data?.buyer;
+    if (!buyer?.email) {
+      return res.status(400).json({ error: 'Missing buyer email' });
     }
 
-    console.log(`Invite sent to ${email} (${name})`);
-    return res.status(200).json({ message: 'Invite sent', email });
-  } catch (err) {
-    console.error('Unexpected error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    const email: string = buyer.email;
+    const name: string = buyer.name || email.split('@')[0];
+
+    try {
+      const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        data: { name },
+        redirectTo: APP_URL,
+      });
+
+      if (error) {
+        if (error.message?.includes('already been registered') || error.message?.includes('already exists')) {
+          return res.status(200).json({ message: 'User already exists', email });
+        }
+        console.error('Supabase invite error:', error);
+        return res.status(500).json({ error: error.message });
+      }
+
+      console.log(`Invite sent to ${email} (${name})`);
+      return res.status(200).json({ message: 'Invite sent', email });
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
   }
+
+  // --- REFUND / CANCELLATION: ban user ---
+  if (
+    event === 'PURCHASE_CANCELED' ||
+    event === 'PURCHASE_REFUNDED' ||
+    event === 'PURCHASE_CHARGEBACK'
+  ) {
+    const buyer = body?.data?.buyer;
+    if (!buyer?.email) {
+      return res.status(400).json({ error: 'Missing buyer email' });
+    }
+
+    const email: string = buyer.email;
+
+    try {
+      // Find user by email
+      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+      if (listError) {
+        console.error('Error listing users:', listError);
+        return res.status(500).json({ error: listError.message });
+      }
+
+      const user = listData.users.find((u) => u.email === email);
+      if (!user) {
+        console.log(`User not found for refund: ${email}`);
+        return res.status(200).json({ message: 'User not found, nothing to revoke', email });
+      }
+
+      // Ban user (876000h ≈ 100 years = effectively permanent)
+      const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        ban_duration: '876000h',
+      });
+
+      if (banError) {
+        console.error('Error banning user:', banError);
+        return res.status(500).json({ error: banError.message });
+      }
+
+      console.log(`Access revoked for ${email} (event: ${event})`);
+      return res.status(200).json({ message: 'Access revoked', email, event });
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Ignore all other events
+  return res.status(200).json({ message: `Event ${event} ignored` });
 }
