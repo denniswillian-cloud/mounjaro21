@@ -50,30 +50,28 @@ function RecipeLayout({ chapter }: { chapter: any }) {
     setTimeout(() => setJustCompleted(false), 2500);
 
     // 🎉 Animação de confetti
-    const duration = 2800;
     const colors = ['#3DFF7A', '#7AFFB2', '#FFD93D', '#FF7B3A', '#C084FC', '#47E5D8', '#ffffff'];
+    const base = { colors, zIndex: 9999, disableForReducedMotion: false };
 
-    // Explosão central
-    confetti({
-      particleCount: 120,
-      spread: 80,
-      origin: { x: 0.5, y: 0.65 },
-      colors,
-      scalar: 1.1,
-      gravity: 0.9,
-      ticks: 200,
-    });
+    // Explosão central imediata
+    confetti({ ...base, particleCount: 150, spread: 90, origin: { x: 0.5, y: 0.6 }, scalar: 1.2, gravity: 0.8, ticks: 250 });
 
-    // Chuva dos lados (esq + dir)
+    // Chuva lateral — 200ms depois
     setTimeout(() => {
-      confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors, scalar: 0.9 });
-      confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors, scalar: 0.9 });
+      confetti({ ...base, particleCount: 70, angle: 55, spread: 60, origin: { x: 0, y: 0.65 }, scalar: 1.0 });
+      confetti({ ...base, particleCount: 70, angle: 125, spread: 60, origin: { x: 1, y: 0.65 }, scalar: 1.0 });
     }, 200);
 
+    // Terceira onda — 500ms depois
     setTimeout(() => {
-      confetti({ particleCount: 40, angle: 60, spread: 45, origin: { x: 0, y: 0.6 }, colors, scalar: 0.8 });
-      confetti({ particleCount: 40, angle: 120, spread: 45, origin: { x: 1, y: 0.6 }, colors, scalar: 0.8 });
-    }, 600);
+      confetti({ ...base, particleCount: 60, angle: 60, spread: 50, origin: { x: 0.1, y: 0.5 }, scalar: 0.9 });
+      confetti({ ...base, particleCount: 60, angle: 120, spread: 50, origin: { x: 0.9, y: 0.5 }, scalar: 0.9 });
+    }, 500);
+
+    // Última chuva do topo — 900ms depois
+    setTimeout(() => {
+      confetti({ ...base, particleCount: 80, spread: 120, origin: { x: 0.5, y: 0.2 }, gravity: 1.2, scalar: 0.8, ticks: 180 });
+    }, 900);
   };
 
   return (
