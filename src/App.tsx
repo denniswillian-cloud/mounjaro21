@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { LangProvider, AuthProvider, ContentProvider, ProgressProvider, useAuth } from './contexts';
+import { LangProvider, AuthProvider, ContentProvider, ProgressProvider, useAuth, useLang } from './contexts';
+import { t } from './translations';
 import Header, { BottomNav } from './components/Header';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
@@ -15,6 +16,7 @@ declare global { interface Window { __pwaPrompt: any; } }
 
 function PWAInstallModal() {
   const { user } = useAuth();
+  const { lang } = useLang();
   const [show, setShow] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSSteps, setShowIOSSteps] = useState(false);
@@ -87,10 +89,10 @@ function PWAInstallModal() {
             fontSize: 30,
           }}>🌿</div>
           <h2 style={{ color: '#E2F2E6', fontSize: 20, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
-            Instalar o App
+            {t(lang, 'pwaTitle')}
           </h2>
           <p style={{ color: '#5E8C6A', fontSize: 14, lineHeight: 1.5, margin: 0 }}>
-            Salve o app na sua tela inicial e acesse com 1 toque, mesmo sem internet
+            {t(lang, 'pwaSubtitle')}
           </p>
         </div>
 
@@ -100,7 +102,7 @@ function PWAInstallModal() {
           border: '1px solid rgba(61,255,122,0.1)',
           padding: '14px 16px', marginBottom: 20,
         }}>
-          {['⚡ Abre instantaneamente', '📴 Funciona sem internet', '🔔 Receba notificações'].map(b => (
+          {[t(lang,'pwaFeature1'), t(lang,'pwaFeature2'), t(lang,'pwaFeature3')].map(b => (
             <div key={b} style={{ color: '#8DB39A', fontSize: 13, padding: '4px 0' }}>{b}</div>
           ))}
         </div>
@@ -113,9 +115,7 @@ function PWAInstallModal() {
             padding: '14px 16px', marginBottom: 16, fontSize: 13,
             color: '#8DB39A', lineHeight: 1.6, textAlign: 'center',
           }}>
-            No iPhone: toque em <span style={{ color: '#3DFF7A', fontWeight: 700 }}>Compartilhar</span>
-            {' '}→{' '}
-            <span style={{ color: '#3DFF7A', fontWeight: 700 }}>Adicionar à Tela de Início</span>
+            {t(lang, 'pwaIOSHint')}
           </div>
         )}
 
@@ -128,7 +128,7 @@ function PWAInstallModal() {
             fontSize: 16, cursor: 'pointer', marginBottom: 10,
             letterSpacing: '-0.01em',
           }}>
-            📲 Baixar App
+            {t(lang, 'pwaButton')}
           </button>
         ) : (
           <div style={{
@@ -136,7 +136,7 @@ function PWAInstallModal() {
             background: 'rgba(61,255,122,0.1)', border: '1px solid rgba(61,255,122,0.3)',
             color: '#3DFF7A', fontWeight: 700, fontSize: 15, textAlign: 'center',
           }}>
-            ✅ App instalado com sucesso!
+            {t(lang, 'pwaInstalled')}
           </div>
         )}
 
@@ -146,7 +146,7 @@ function PWAInstallModal() {
           background: 'transparent', border: '1px solid rgba(61,255,122,0.1)',
           color: '#3E6348', fontWeight: 600, fontSize: 14, cursor: 'pointer',
         }}>
-          Agora não
+          {t(lang, 'pwaLater')}
         </button>
       </div>
 
