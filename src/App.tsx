@@ -11,25 +11,20 @@ import CommunityPage from './pages/CommunityPage';
 import AdminPage from './pages/AdminPage';
 
 // ─── PWA Install Modal ──────────────────────────────────────────────────────
+declare global { interface Window { __pwaPrompt: any; } }
+
 function PWAInstallModal() {
   const { user } = useAuth();
   const [show, setShow] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSSteps, setShowIOSSteps] = useState(false);
   const [installed, setInstalled] = useState(false);
   const prevUser = useRef<string | null>(null);
 
   useEffect(() => {
-    // Captura o evento de instalação (Android/Chrome)
-    const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e); };
-    window.addEventListener('beforeinstallprompt', handler as any);
-
     // Detecta iOS
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
     setIsIOS(ios);
-
-    return () => window.removeEventListener('beforeinstallprompt', handler as any);
   }, []);
 
   useEffect(() => {
@@ -48,20 +43,30 @@ function PWAInstallModal() {
 
   const handleInstall = async () => {
     if (isIOS) { setShowIOSSteps(true); return; }
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const result = await installPrompt.userChoice;
-    if (result.outcome === 'accepted') { setInstalled(true); setTimeout(() => setShow(false), 2000); }
+    const prompt = window.__pwaPrompt;
+    if (!prompt) return;
+    prompt.prompt();
+    const result = await prompt.userChoice;
+    if (result.outcome === 'accepted') {
+      window.__pwaPrompt = null;
+      setInstalled(true);
+      setTimeout(() => setShow(false), 2000);
+    }
   };
 
   if (!show) return null;
+
+  // Verifica se é mobile pelo viewport
+  const isMobile = window.innerWidth <= 640;
 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
       background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-      padding: '0 0 24px',
+      display: 'flex',
+      alignItems: isMobile ? 'flex-end' : 'center',
+      justifyContent: 'center',
+      padding: isMobile ? '0 0 24px' : '0',
     }}>
       <div style={{
         width: '100%', maxWidth: 420, margin: '0 16px',

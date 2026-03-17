@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts';
 import { useLang } from '../contexts';
 import { t } from '../translations';
-import { Eye, EyeOff, Leaf, Download, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Leaf } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -13,42 +13,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [installed, setInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [showIOSHint, setShowIOSHint] = useState(false);
-
-  useEffect(() => {
-    // Detecta iOS
-    const ios = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
-    setIsIOS(ios);
-    // Já instalado como PWA?
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setInstalled(true);
-    }
-    // Captura o evento de instalação (Android/Chrome)
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler as any);
-    return () => window.removeEventListener('beforeinstallprompt', handler as any);
-  }, []);
-
-  const handleInstall = async () => {
-    if (isIOS) {
-      setShowIOSHint(true);
-      return;
-    }
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const result = await installPrompt.userChoice;
-    if (result.outcome === 'accepted') {
-      setInstalled(true);
-      setInstallPrompt(null);
-    }
-  };
-
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -185,55 +149,6 @@ export default function LoginPage() {
           </form>
 
         </div>
-
-        {/* Botão Instalar App */}
-        {!installed && (installPrompt || isIOS) && (
-          <div className="mt-4">
-            <button
-              onClick={handleInstall}
-              className="w-full py-4 rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-3"
-              style={{
-                background: 'rgba(61,255,122,0.08)',
-                border: '1.5px solid rgba(61,255,122,0.3)',
-                color: '#3DFF7A',
-                fontSize: '15px',
-                letterSpacing: '0.01em',
-              }}
-            >
-              <Download size={18} />
-              Instalar App no celular
-            </button>
-            {showIOSHint && (
-              <div
-                className="mt-3 p-4 rounded-xl text-sm text-center leading-relaxed"
-                style={{
-                  background: 'rgba(61,255,122,0.06)',
-                  border: '1px solid rgba(61,255,122,0.15)',
-                  color: '#8DB39A',
-                }}
-              >
-                No iPhone: toque em{' '}
-                <span style={{ color: '#3DFF7A', fontWeight: 700 }}>Compartilhar</span>
-                {' '}→{' '}
-                <span style={{ color: '#3DFF7A', fontWeight: 700 }}>Adicionar à Tela de Início</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {installed && (
-          <div
-            className="mt-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium"
-            style={{
-              background: 'rgba(61,255,122,0.06)',
-              border: '1px solid rgba(61,255,122,0.15)',
-              color: '#3DFF7A',
-            }}
-          >
-            <CheckCircle size={16} />
-            App instalado com sucesso!
-          </div>
-        )}
 
         <p className="text-center text-xs mt-6" style={{ color: '#3E6348' }}>
           El plan natural de 21 días para acelerar tu metabolismo

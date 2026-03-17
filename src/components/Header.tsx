@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Globe, LogOut, Settings, BookOpen, Download, Users, Home, Leaf } from 'lucide-react';
 import { useLang } from '../contexts';
 import { useAuth } from '../contexts';
@@ -15,7 +15,6 @@ const LANGS: { code: Language; label: string; flag: string }[] = [
 export default function Header() {
   const { lang, setLang } = useLang();
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -31,6 +30,7 @@ export default function Header() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
+    <>
     <header
       className="sticky top-0 z-50"
       style={{
@@ -128,7 +128,7 @@ export default function Header() {
           {/* Logout desktop */}
           {user && (
             <button
-              onClick={() => { logout(); navigate('/login'); }}
+              onClick={() => logout()}
               className="hidden md:flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm transition-all"
               style={{ color: '#5E8C6A' }}
               title={t(lang, 'logout')}
@@ -172,7 +172,7 @@ export default function Header() {
           ))}
           {user && (
             <button
-              onClick={() => { logout(); navigate('/login'); setMenuOpen(false); }}
+              onClick={() => { setMenuOpen(false); logout(); }}
               className="flex items-center gap-4 px-4 py-4 w-full rounded-2xl text-base font-semibold mt-2"
               style={{ color: '#5E8C6A', borderTop: '1px solid rgba(61,255,122,0.08)', paddingTop: '16px' }}
             >
@@ -183,10 +183,11 @@ export default function Header() {
         </div>
       )}
 
-      {(langOpen || menuOpen) && (
-        <div className="fixed inset-0 z-40" onClick={() => { setLangOpen(false); setMenuOpen(false); }} />
-      )}
     </header>
+    {(langOpen || menuOpen) && (
+      <div className="fixed inset-0 z-40" onClick={() => { setLangOpen(false); setMenuOpen(false); }} />
+    )}
+  </>
   );
 }
 
