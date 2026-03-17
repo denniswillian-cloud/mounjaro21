@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "transforma21",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": [
+        "C:\\Users\\Denis\\Desktop\\PROUJE~1\\TRANSF~1\\node_modules\\vite\\bin\\vite.js",
+        "C:\\Users\\Denis\\Desktop\\PROUJE~1\\TRANSF~1"
+      ],
+      "port": 5173
+    }
+  ]
+}
