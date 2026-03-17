@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle, ChevronRight, Download, Sparkles, Clock, Leaf, 
 import { useLang, useContent, useProgress } from '../contexts';
 import { t } from '../translations';
 import CommentsSection from '../components/CommentsSection';
+import confetti from 'canvas-confetti';
 
 // Determine category neon color
 function getCatNeon(categoryId: string): string {
@@ -47,6 +48,32 @@ function RecipeLayout({ chapter }: { chapter: any }) {
     markComplete(chapter.id);
     setJustCompleted(true);
     setTimeout(() => setJustCompleted(false), 2500);
+
+    // 🎉 Animação de confetti
+    const duration = 2800;
+    const colors = ['#3DFF7A', '#7AFFB2', '#FFD93D', '#FF7B3A', '#C084FC', '#47E5D8', '#ffffff'];
+
+    // Explosão central
+    confetti({
+      particleCount: 120,
+      spread: 80,
+      origin: { x: 0.5, y: 0.65 },
+      colors,
+      scalar: 1.1,
+      gravity: 0.9,
+      ticks: 200,
+    });
+
+    // Chuva dos lados (esq + dir)
+    setTimeout(() => {
+      confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors, scalar: 0.9 });
+      confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors, scalar: 0.9 });
+    }, 200);
+
+    setTimeout(() => {
+      confetti({ particleCount: 40, angle: 60, spread: 45, origin: { x: 0, y: 0.6 }, colors, scalar: 0.8 });
+      confetti({ particleCount: 40, angle: 120, spread: 45, origin: { x: 1, y: 0.6 }, colors, scalar: 0.8 });
+    }, 600);
   };
 
   return (
