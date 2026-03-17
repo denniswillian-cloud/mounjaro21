@@ -184,14 +184,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div
-            className="mt-5 pt-4 text-center"
-            style={{ borderTop: '1px solid rgba(61,255,122,0.08)' }}
-          >
-            <p className="text-xs" style={{ color: '#3E6348' }}>
-              Demo: demo@transforma21.com / demo123
-            </p>
-          </div>
         </div>
 
         {/* Botão Instalar App */}
