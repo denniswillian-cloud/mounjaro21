@@ -138,6 +138,7 @@ interface ProgressCtx {
   markComplete: (id: string) => void;
   isComplete: (id: string) => boolean;
   setDay: (d: number) => void;
+  resetProgress: () => void;
 }
 const ProgressContext = createContext<ProgressCtx>({} as ProgressCtx);
 
@@ -158,9 +159,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   };
   const isComplete = (id: string) => progress.completedChapters.includes(id);
   const setDay = (d: number) => setProgress(prev => ({ ...prev, currentDay: d }));
+  const resetProgress = () => setProgress({ completedChapters: [], currentDay: 1 });
 
   return (
-    <ProgressContext.Provider value={{ progress, markComplete, isComplete, setDay }}>
+    <ProgressContext.Provider value={{ progress, markComplete, isComplete, setDay, resetProgress }}>
       {children}
     </ProgressContext.Provider>
   );

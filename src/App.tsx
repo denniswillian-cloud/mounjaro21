@@ -171,6 +171,63 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ─── Update Banner ──────────────────────────────────────────────────────────
+function UpdateBanner() {
+  const { lang } = useLang();
+  const [showUpdate, setShowUpdate] = useState(false);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (!newSW) return;
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            setShowUpdate(true);
+          }
+        });
+      });
+    });
+    // Detecta quando um novo SW toma controle (recarregar automaticamente)
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) { refreshing = true; window.location.reload(); }
+    });
+  }, []);
+
+  if (!showUpdate) return null;
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)',
+      zIndex: 9998, width: 'calc(100% - 32px)', maxWidth: 400,
+      background: '#0C1A0E', border: '1px solid rgba(61,255,122,0.3)',
+      borderRadius: 16, padding: '12px 16px',
+      boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+      animation: 'slideUp 0.3s cubic-bezier(.22,1,.36,1)',
+    }}>
+      <span style={{ color: '#8DB39A', fontSize: 13, fontWeight: 500 }}>
+        {t(lang, 'updateAvailable')}
+      </span>
+      <button
+        onClick={() => {
+          navigator.serviceWorker.ready.then(reg => reg.waiting?.postMessage({ type: 'SKIP_WAITING' }));
+        }}
+        style={{
+          background: 'linear-gradient(135deg, #3DFF7A, #2BC45A)',
+          border: 'none', borderRadius: 10, padding: '8px 16px',
+          color: '#060E08', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+          whiteSpace: 'nowrap', flexShrink: 0,
+        }}
+      >
+        {t(lang, 'updateButton')}
+      </button>
+    </div>
+  );
+}
+
 function AppLayout() {
   const { user, loading } = useAuth();
   return (
@@ -178,6 +235,7 @@ function AppLayout() {
       {user && <Header />}
       {user && <BottomNav />}
       {user && <PWAInstallModal />}
+      <UpdateBanner />
       <Routes>
         <Route path="/login" element={
           loading ? null : user ? <Navigate to="/" replace /> : <LoginPage />

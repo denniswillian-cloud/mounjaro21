@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, CheckCircle, Circle, Play, Leaf, Zap, Droplets, Sparkles } from 'lucide-react';
+import { ChevronRight, ChevronLeft, CheckCircle, Circle, Play, Leaf, Zap, Droplets, Sparkles, RotateCcw } from 'lucide-react';
 import { useLang, useContent, useProgress } from '../contexts';
 import { t } from '../translations';
 import type { Chapter } from '../data';
@@ -8,8 +8,9 @@ import type { Chapter } from '../data';
 // ─── Hero ──────────────────────────────────────────────────────────────────────
 function HeroBanner() {
   const { lang } = useLang();
-  const { progress } = useProgress();
+  const { progress, resetProgress } = useProgress();
   const navigate = useNavigate();
+  const [confirmReset, setConfirmReset] = useState(false);
   const pct = Math.round((progress.completedChapters.length / 21) * 100);
 
   return (
@@ -112,6 +113,40 @@ function HeroBanner() {
           </div>
 
           <p className="text-sm" style={{ color: '#5E8C6A' }}>{t(lang, 'nextStep')}</p>
+
+          {/* Botão reiniciar */}
+          <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(61,255,122,0.07)' }}>
+            {!confirmReset ? (
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="flex items-center gap-1.5 text-xs font-medium transition-all"
+                style={{ color: '#3E5C44', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                <RotateCcw size={11} />
+                {t(lang, 'resetProgram')}
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs" style={{ color: '#5E8C6A' }}>{t(lang, 'resetConfirm')}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { resetProgress(); setConfirmReset(false); }}
+                    className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
+                    style={{ background: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.25)', color: '#ff7070', cursor: 'pointer' }}
+                  >
+                    {t(lang, 'resetYes')}
+                  </button>
+                  <button
+                    onClick={() => setConfirmReset(false)}
+                    className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
+                    style={{ background: 'rgba(61,255,122,0.06)', border: '1px solid rgba(61,255,122,0.12)', color: '#5E8C6A', cursor: 'pointer' }}
+                  >
+                    {t(lang, 'resetCancel')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
