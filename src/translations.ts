@@ -127,6 +127,10 @@ export const translations: Record<Language, Record<string, string>> = {
     allDone: '¡Completado!',
     recipes30: '30 recetas',
     viewAll: 'Ver todos',
+    // Push notifications
+    notifBanner: 'Activar recordatorios',
+    notifEnable: 'Activar',
+    notifLater: 'Ahora no',
   },
 
   pt: {
@@ -196,6 +200,10 @@ export const translations: Record<Language, Record<string, string>> = {
     loading: 'Carregando...', noContent: 'Conteúdo em breve',
     phase: 'Fase', day: 'Dia', of21: 'de 21', allDone: 'Concluído!',
     recipes30: '30 receitas', viewAll: 'Ver todos',
+    // Push notifications
+    notifBanner: 'Ativar lembretes diários',
+    notifEnable: 'Ativar',
+    notifLater: 'Agora não',
   },
 
   it: {
@@ -266,6 +274,10 @@ export const translations: Record<Language, Record<string, string>> = {
     loading: 'Caricamento...', noContent: 'Contenuto in arrivo',
     phase: 'Fase', day: 'Giorno', of21: 'di 21', allDone: 'Completato!',
     recipes30: '30 ricette', viewAll: 'Vedi tutti',
+    // Push notifications
+    notifBanner: 'Attiva promemoria',
+    notifEnable: 'Attiva',
+    notifLater: 'Non ora',
   },
 
   en: {
@@ -335,6 +347,10 @@ export const translations: Record<Language, Record<string, string>> = {
     loading: 'Loading...', noContent: 'Content coming soon',
     phase: 'Phase', day: 'Day', of21: 'of 21', allDone: 'Completed!',
     recipes30: '30 recipes', viewAll: 'View all',
+    // Push notifications
+    notifBanner: 'Enable daily reminders',
+    notifEnable: 'Enable',
+    notifLater: 'Not now',
   },
 };
 

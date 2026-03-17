@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { LangProvider, AuthProvider, ContentProvider, ProgressProvider, useAuth, useLang } from './contexts';
+import { LangProvider, AuthProvider, ContentProvider, ProgressProvider, useAuth, useLang, useProgress } from './contexts';
 import { t } from './translations';
+
+// VAPID public key (safe to expose in frontend)
+const VAPID_PUBLIC_KEY = 'BMWHn02Ig3J0lVjcjp7NdxzfcdhNggMPBpVPcHVyFFc_Xe3GNlN-YZWaVEHdRaZgIgabd62w4XGJS4UbtP6nldI';
 import Header, { BottomNav } from './components/Header';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
@@ -228,6 +231,99 @@ function UpdateBanner() {
   );
 }
 
+// ─── Push Notifications Banner ────────────────────────────────────────────────
+function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray.buffer as ArrayBuffer;
+}
+
+function PushNotificationBanner() {
+  const { user } = useAuth();
+  const { lang } = useLang();
+  const { progress } = useProgress();
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
+    if (sessionStorage.getItem('push_banner_shown')) return;
+    // Only show if user has completed at least 1 day
+    if (progress.completedChapters.length < 1) return;
+
+    setShow(true);
+    sessionStorage.setItem('push_banner_shown', '1');
+  }, [user, progress.completedChapters.length]);
+
+  const handleEnable = async () => {
+    setShow(false);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+
+      const reg = await navigator.serviceWorker.ready;
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription, userId: user!.id, lang }),
+      });
+    } catch (err) {
+      console.error('Push subscription failed:', err);
+    }
+  };
+
+  if (!show) return null;
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)',
+      zIndex: 9997, width: 'calc(100% - 32px)', maxWidth: 400,
+      background: '#0C1A0E', border: '1px solid rgba(61,255,122,0.25)',
+      borderRadius: 16, padding: '12px 16px',
+      boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', gap: 10,
+      animation: 'slideUp 0.3s cubic-bezier(.22,1,.36,1)',
+    }}>
+      <span style={{ fontSize: 18 }}>🔔</span>
+      <span style={{ color: '#8DB39A', fontSize: 13, fontWeight: 500, flex: 1 }}>
+        {t(lang, 'notifBanner')}
+      </span>
+      <button
+        onClick={handleEnable}
+        style={{
+          background: 'linear-gradient(135deg, #3DFF7A, #2BC45A)',
+          border: 'none', borderRadius: 10, padding: '7px 14px',
+          color: '#060E08', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+          whiteSpace: 'nowrap', flexShrink: 0,
+        }}
+      >
+        {t(lang, 'notifEnable')}
+      </button>
+      <button
+        onClick={() => setShow(false)}
+        style={{
+          background: 'transparent', border: 'none',
+          color: '#3E6348', fontSize: 13, fontWeight: 600,
+          cursor: 'pointer', padding: '4px 6px', flexShrink: 0,
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 function AppLayout() {
   const { user, loading } = useAuth();
   return (
@@ -236,6 +332,7 @@ function AppLayout() {
       {user && <BottomNav />}
       {user && <PWAInstallModal />}
       <UpdateBanner />
+      <PushNotificationBanner />
       <Routes>
         <Route path="/login" element={
           loading ? null : user ? <Navigate to="/" replace /> : <LoginPage />
