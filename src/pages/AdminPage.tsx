@@ -1,9 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit3, Check, X, ShieldAlert, Eye, Download, Upload, Link } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, ShieldAlert, Eye, Download, Link } from 'lucide-react';
 import { useLang, useContent, useAuth } from '../contexts';
 import { t } from '../translations';
 import type { Category, Chapter } from '../data';
+import { supabase } from '../supabase';
+
+interface DownloadItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  summary: string;
+  emoji: string;
+  pdf_url: string;
+  sort_order: number;
+}
 
 // ─── Tab Bar ───────────────────────────────────────────────────────────────────
 type AdminTab = 'categories' | 'chapters' | 'comments' | 'downloads';
@@ -286,64 +297,66 @@ function ChaptersTab() {
 // ─── Downloads Tab ─────────────────────────────────────────────────────────────
 function DownloadsTab() {
   const { lang } = useLang();
-  const { chapters, setChapters } = useContent();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [downloads, setDownloads] = useState<DownloadItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editUrl, setEditUrl] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [newSubtitle, setNewSubtitle] = useState('');
   const [newSummary, setNewSummary] = useState('');
   const [newEmoji, setNewEmoji] = useState('📄');
   const [newUrl, setNewUrl] = useState('');
-  const [uploadMode, setUploadMode] = useState<'url' | 'file'>('url');
-  const [uploading, setUploading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState(false);
 
-  const downloads = chapters.filter(c => c.pdfUrl !== undefined && c.categoryId === 'downloads')
-    .sort((a, b) => a.order - b.order);
+  useEffect(() => { fetchDownloads(); }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.name.endsWith('.pdf')) { alert('Por favor, selecciona un archivo PDF.'); return; }
-    setUploading(true);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setNewUrl(ev.target?.result as string);
-      if (!newTitle) setNewTitle(file.name.replace('.pdf', ''));
-      setUploading(false);
-    };
-    reader.readAsDataURL(file);
+  const fetchDownloads = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('downloads').select('*').order('sort_order', { ascending: true });
+    if (data) setDownloads(data as DownloadItem[]);
+    setLoading(false);
   };
 
-  const addDownload = () => {
+  const addDownload = async () => {
     if (!newTitle.trim()) { alert('El título es obligatorio.'); return; }
-    if (!newUrl.trim()) { alert('Agrega una URL o sube un archivo PDF.'); return; }
-    const newItem: Chapter = {
+    if (!newUrl.trim()) { alert('Agrega una URL del archivo.'); return; }
+    setSaving(true);
+    const item: DownloadItem = {
       id: 'dl_' + Date.now(),
-      categoryId: 'downloads',
       title: newTitle.trim(),
       subtitle: newSubtitle.trim(),
       summary: newSummary.trim(),
-      content: newSummary.trim(),
       emoji: newEmoji,
-      pdfUrl: newUrl.trim(),
-      coverColor: '#0D2A14',
-      neonColor: '#3DFF7A',
-      order: chapters.filter(c => c.categoryId === 'downloads').length,
+      pdf_url: newUrl.trim(),
+      sort_order: downloads.length,
     };
-    setChapters([...chapters, newItem]);
+    const { error } = await supabase.from('downloads').insert(item);
+    setSaving(false);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    setDownloads(prev => [...prev, item]);
     setNewTitle(''); setNewSubtitle(''); setNewSummary('');
     setNewEmoji('📄'); setNewUrl('');
     setShowAdd(false);
     setSuccessMsg(true);
     setTimeout(() => setSuccessMsg(false), 3000);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const deleteDownload = (id: string) => {
-    if (confirm('¿Eliminar este material?')) {
-      setChapters(chapters.filter(c => c.id !== id));
-    }
+  const deleteDownload = async (id: string) => {
+    if (!confirm('¿Eliminar este material?')) return;
+    const { error } = await supabase.from('downloads').delete().eq('id', id);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    setDownloads(prev => prev.filter(d => d.id !== id));
+  };
+
+  const saveEditUrl = async (id: string) => {
+    if (!editUrl.trim()) return;
+    const { error } = await supabase.from('downloads').update({ pdf_url: editUrl.trim() }).eq('id', id);
+    if (error) { alert('Error al actualizar: ' + error.message); return; }
+    setDownloads(prev => prev.map(d => d.id === id ? { ...d, pdf_url: editUrl.trim() } : d));
+    setEditId(null);
+    setEditUrl('');
   };
 
   const inputStyle = { background: '#f5f3ef', border: '1.5px solid #e8e4dc', color: '#1F2937' };
@@ -393,55 +406,20 @@ function DownloadsTab() {
               className="px-3 py-2 rounded-xl text-sm outline-none" style={inputStyle} />
           </div>
 
-          {/* URL / File toggle */}
-          <div className="flex gap-2 mb-3">
-            <button
-              onClick={() => setUploadMode('url')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all"
-              style={{ background: uploadMode === 'url' ? '#1F2937' : '#f5f3ef', color: uploadMode === 'url' ? 'white' : '#6b7280' }}
-            >
-              <Link size={13} /> URL
-            </button>
-            <button
-              onClick={() => setUploadMode('file')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all"
-              style={{ background: uploadMode === 'file' ? '#1F2937' : '#f5f3ef', color: uploadMode === 'file' ? 'white' : '#6b7280' }}
-            >
-              <Upload size={13} /> {t(lang, 'orUploadFile').split(' ')[0]}
-            </button>
+          <div className="flex items-center gap-2 mb-4">
+            <Link size={14} color="#6b7280" />
+            <input value={newUrl} onChange={e => setNewUrl(e.target.value)}
+              placeholder="URL do Google Drive, Dropbox..."
+              className="flex-1 px-3 py-2 rounded-xl text-sm outline-none" style={inputStyle} />
           </div>
 
-          {uploadMode === 'url' ? (
-            <input value={newUrl} onChange={e => setNewUrl(e.target.value)}
-              placeholder={t(lang, 'pdfUrlLabel')}
-              className="w-full px-3 py-2 rounded-xl text-sm outline-none mb-3" style={inputStyle} />
-          ) : (
-            <div className="mb-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf"
-                onChange={handleFileUpload}
-                className="w-full text-sm"
-                style={{ color: '#6b7280' }}
-              />
-              {uploading && <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>Leyendo archivo...</p>}
-              {newUrl && newUrl.startsWith('data:') && (
-                <p className="text-xs mt-1" style={{ color: '#16a34a' }}>✓ Archivo cargado en memoria</p>
-              )}
-              <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
-                ⚠️ Archivos grandes pueden ocupar mucho espacio en el navegador. Para PDFs pesados usa una URL externa (Google Drive, Dropbox).
-              </p>
-            </div>
-          )}
-
           <div className="flex gap-2">
-            <button onClick={addDownload}
+            <button onClick={addDownload} disabled={saving}
               className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium"
-              style={{ background: '#1E4D3D', color: 'white' }}>
-              <Check size={14} /> {t(lang, 'save')}
+              style={{ background: '#1E4D3D', color: 'white', opacity: saving ? 0.7 : 1 }}>
+              <Check size={14} /> {saving ? '...' : t(lang, 'save')}
             </button>
-            <button onClick={() => { setShowAdd(false); setNewUrl(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+            <button onClick={() => { setShowAdd(false); setNewUrl(''); }}
               className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium"
               style={{ background: '#e8e4dc', color: '#1F2937' }}>
               <X size={14} /> {t(lang, 'cancel')}
@@ -450,7 +428,9 @@ function DownloadsTab() {
         </div>
       )}
 
-      {downloads.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-10 text-sm" style={{ color: '#9ca3af' }}>Cargando...</div>
+      ) : downloads.length === 0 ? (
         <div className="text-center py-12 rounded-2xl" style={{ background: 'white', border: '1px solid #e8e4dc' }}>
           <Download size={40} color="#d1d5db" className="mx-auto mb-3" />
           <p className="text-sm" style={{ color: '#9ca3af' }}>{t(lang, 'noDownloads')}</p>
@@ -458,29 +438,58 @@ function DownloadsTab() {
       ) : (
         <div className="space-y-2">
           {downloads.map(dl => (
-            <div key={dl.id} className="rounded-2xl p-4 flex items-center justify-between gap-3"
+            <div key={dl.id} className="rounded-2xl p-4"
               style={{ background: 'white', border: '1px solid #e8e4dc' }}>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-                  style={{ background: '#f0fdf4' }}>
-                  {dl.emoji || '📄'}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
+                    style={{ background: '#f0fdf4' }}>
+                    {dl.emoji || '📄'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate" style={{ color: '#1F2937' }}>{dl.title}</p>
+                    <p className="text-xs truncate" style={{ color: '#9ca3af' }}>{dl.subtitle}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-sm truncate" style={{ color: '#1F2937' }}>{dl.title}</p>
-                  <p className="text-xs truncate" style={{ color: '#9ca3af' }}>{dl.subtitle}</p>
-                  {dl.pdfUrl && dl.pdfUrl !== '#' && (
-                    <a href={dl.pdfUrl} target="_blank" rel="noreferrer"
-                      className="text-xs no-underline" style={{ color: '#1E4D3D' }}>
-                      {dl.pdfUrl.startsWith('data:') ? '📎 Archivo local' : '🔗 ' + dl.pdfUrl.slice(0, 40) + '...'}
-                    </a>
-                  )}
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => { setEditId(dl.id); setEditUrl(dl.pdf_url); }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: '#f5f3ef', color: '#6b7280' }}>
+                    <Edit3 size={14} />
+                  </button>
+                  <button onClick={() => deleteDownload(dl.id)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: '#fee2e2', color: '#dc2626' }}>
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
-              <button onClick={() => deleteDownload(dl.id)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: '#fee2e2', color: '#dc2626' }}>
-                <Trash2 size={14} />
-              </button>
+
+              {editId === dl.id ? (
+                <div className="mt-3 flex gap-2">
+                  <input
+                    value={editUrl}
+                    onChange={e => setEditUrl(e.target.value)}
+                    placeholder="Nova URL..."
+                    className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ background: '#f5f3ef', border: '1.5px solid #1E4D3D', color: '#1F2937' }}
+                  />
+                  <button onClick={() => saveEditUrl(dl.id)}
+                    className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium"
+                    style={{ background: '#1E4D3D', color: 'white' }}>
+                    <Check size={12} />
+                  </button>
+                  <button onClick={() => { setEditId(null); setEditUrl(''); }}
+                    className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium"
+                    style={{ background: '#e8e4dc', color: '#1F2937' }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs truncate" style={{ color: '#9ca3af', paddingLeft: '52px' }}>
+                  🔗 {dl.pdf_url}
+                </p>
+              )}
             </div>
           ))}
         </div>

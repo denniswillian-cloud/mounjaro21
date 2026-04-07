@@ -1,25 +1,32 @@
-import React from 'react';
-import { Download, FileText, ArrowDown, ExternalLink } from 'lucide-react';
-import { useLang, useContent } from '../contexts';
+import React, { useState, useEffect } from 'react';
+import { Download, FileText, ArrowDown } from 'lucide-react';
+import { useLang } from '../contexts';
 import { t } from '../translations';
+import { supabase } from '../supabase';
 
-// Converte links do Google Drive / Dropbox para download/visualização direto
+interface DownloadItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  summary: string;
+  emoji: string;
+  pdf_url: string;
+  sort_order: number;
+}
+
 function getDirectPdfUrl(url: string): string {
   if (!url) return url;
 
-  // Google Drive: https://drive.google.com/file/d/FILE_ID/view...
   const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/);
   if (driveMatch) {
     return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
   }
 
-  // Google Drive: https://drive.google.com/open?id=FILE_ID
   const driveOpen = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
   if (driveOpen) {
     return `https://drive.google.com/uc?export=download&id=${driveOpen[1]}`;
   }
 
-  // Dropbox: troca dl=0 por dl=1 e usa link direto
   if (url.includes('dropbox.com')) {
     return url.replace('?dl=0', '?dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
   }
@@ -27,16 +34,21 @@ function getDirectPdfUrl(url: string): string {
   return url;
 }
 
-function openPdf(rawUrl: string) {
-  const url = getDirectPdfUrl(rawUrl);
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
-
 export default function LibraryPage() {
   const { lang } = useLang();
-  const { chapters } = useContent();
+  const [downloads, setDownloads] = useState<DownloadItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const downloads = chapters.filter(c => c.pdfUrl).sort((a, b) => a.order - b.order);
+  useEffect(() => {
+    supabase
+      .from('downloads')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => {
+        if (data) setDownloads(data as DownloadItem[]);
+        setLoading(false);
+      });
+  }, []);
 
   const neons = ['#3DFF7A', '#FF7B3A', '#47E5D8', '#C084FC'];
 
@@ -69,7 +81,17 @@ export default function LibraryPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {downloads.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div style={{
+              width: 36, height: 36,
+              border: '3px solid rgba(61,255,122,0.2)',
+              borderTopColor: '#3DFF7A',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+            }} />
+          </div>
+        ) : downloads.length === 0 ? (
           <div className="text-center py-20">
             <FileText size={48} color="#3E6348" className="mx-auto mb-4" />
             <p style={{ color: '#5E8C6A' }}>{t(lang, 'noContent')}</p>
@@ -84,9 +106,7 @@ export default function LibraryPage() {
                   className="rounded-2xl overflow-hidden card-hover"
                   style={{ background: '#0C1A0E', border: `1px solid ${neon}15` }}
                 >
-                  {/* Top accent bar */}
                   <div className="h-1.5" style={{ background: neon, boxShadow: `0 0 8px ${neon}50` }} />
-
                   <div className="p-5">
                     <div className="flex items-start gap-3 mb-4">
                       <div
@@ -106,7 +126,7 @@ export default function LibraryPage() {
                     </p>
 
                     <button
-                      onClick={() => openPdf(item.pdfUrl!)}
+                      onClick={() => window.open(getDirectPdfUrl(item.pdf_url), '_blank', 'noopener,noreferrer')}
                       className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold w-full transition-all active:scale-95"
                       style={{
                         background: `${neon}15`,
